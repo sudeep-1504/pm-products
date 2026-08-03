@@ -1,10 +1,9 @@
 // Prisma schema for the Backlog Prioritisation Tool.
 //
-// Dev datasource is SQLite (zero-infra, runs in-container). Field types are kept
-// portable to Postgres/Supabase on purpose: no SQLite-only features, and enums are
-// modeled as validated String columns (Prisma enums aren't supported on SQLite)
-// rather than native Postgres enums, so the same schema works unchanged after
-// switching the datasource provider + adapter to Postgres.
+// Datasource is Postgres (Supabase). Enums are still modeled as validated
+// String columns rather than native Postgres enums — this schema started on
+// SQLite (which has no enum support) and keeping String avoids a second
+// migration path if a lighter-weight datasource is ever needed again.
 
 generator client {
   provider = "prisma-client"
@@ -12,7 +11,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 // ── Product context ──────────────────────────────────────────────────────────

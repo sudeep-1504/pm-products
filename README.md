@@ -22,26 +22,84 @@ Phase 4 (multi-backlog run comparison) is not in this pass.
 ## Stack
 
 - Next.js (App Router) + Tailwind v4, hand-rolled shadcn/ui-style primitives (Radix UI)
-- Prisma ORM. Dev datasource is SQLite via `@prisma/adapter-better-sqlite3` — zero
-  infrastructure to run locally. Schema types are kept portable to Postgres/Supabase on
-  purpose (no SQLite-only features), so moving to production is a datasource + adapter
-  swap, not a schema rewrite.
+- Prisma ORM against Supabase Postgres via `@prisma/adapter-pg` (`pg` driver).
 - AI provider abstraction (`src/lib/ai`) — Claude via `@anthropic-ai/sdk` is the only
   provider wired up (matches the PRD's v1 scope), behind an interface that keeps the
   extraction prompt/JSON schema stable across models/providers.
 - SheetJS (`xlsx`) for CSV/XLSX parsing, server-side only.
 
+## Database: Supabase Postgres
+
+Project: `pm-products-backlog-prioritisation` (ref `iirbnjkzpzuuofydvhgm`, `ap-south-1`).
+Schema is applied — 10 tables from `prisma/schema.prisma`, matching the PRD's Section 13
+data model.
+
+Set `DATABASE_URL` (see `.env.example`) to the **Transaction pooler** connection string
+with `?pgbouncer=true` appended — required for serverless (Vercel functions, and this
+avoids Postgres connection-limit exhaustion under autoscaling):
+
+```
+postgresql://postgres.iirbnjkzpzuuofydvhgm:[YOUR-PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+```
+
+Get the password from Supabase Dashboard → this project → Project Settings → Database →
+Connect → "Transaction pooler" (or reset the DB password there if you don't have it).
+**Set this same value as `DATABASE_URL` in the Vercel project's environment variables** —
+that step has to happen in Vercel's dashboard; nothing in this repo can do it for you.
+
+**Row Level Security is off on all 10 tables.** This is safe *only* because the app
+connects as the `postgres` role (via the Prisma connection string), which bypasses RLS —
+the app never uses `supabase-js` or the anon/publishable key. With RLS off, though,
+Supabase's auto-generated REST/GraphQL API exposes every row to anyone holding the
+project's anon key. Recommended fix (not yet applied — a schema-security change like
+this should be a deliberate call, not something done in passing):
+
+```sql
+ALTER TABLE public."ProductContext" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."AppConfig" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."Backlog" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."Task" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."TaskSignal" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."FrameworkConfig" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."OrgRule" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."ScoreRun" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."TaskScore" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."AuditEvent" ENABLE ROW LEVEL SECURITY;
+```
+
+Enabling RLS with no policies blocks the anon/authenticated PostgREST roles entirely
+(they have no legitimate reason to touch this data) while leaving Prisma's connection
+fully unaffected.
+
+### Schema changes going forward
+
+This was built in a sandbox whose network egress is allowlisted and does **not**
+include arbitrary Supabase project hostnames — only the Supabase MCP tools (a separate
+path) could reach the database from here. Practical effect: `prisma migrate dev` (which
+needs a live DB connection to diff/apply) doesn't work from this environment. The
+migration in `prisma/migrations/` was instead generated locally with
+`prisma migrate diff --from-empty --to-schema` (no DB connection required) and applied
+via the Supabase MCP `apply_migration` tool. From a normal machine or CI runner with
+unrestricted network access, `prisma migrate dev` / `prisma migrate deploy` work exactly
+as usual against `DATABASE_URL`.
+
 ## Getting started
 
 ```bash
 npm install
-npx prisma migrate deploy   # creates prisma/dev.db
+npx prisma generate   # postinstall also does this
 npm run dev
 ```
 
 Open http://localhost:3000. Set up Product Context first (extraction quality depends on
 it), then create a backlog — `samples/sample-backlog.csv` is a small ready-made file to
 try the flow with.
+
+**Not verified from this build session:** the golden path (import → extract → score →
+commit → export) against the live Supabase DB, because this sandbox can't reach it
+(see above). It was fully verified earlier against SQLite with identical application
+code — only the datasource/adapter changed — but re-confirming against the real
+Postgres instance (locally, or via a Vercel deploy) is the one remaining check.
 
 ### Running extraction against real Claude
 
