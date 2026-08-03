@@ -39,6 +39,11 @@ export function ReviewTable({
   const [pendingFramework, setPendingFramework] = useState(data.framework.key);
   const parentRef = useRef<HTMLDivElement>(null);
 
+  // useVirtualizer returns functions the React Compiler can't safely memoize,
+  // so it skips optimizing this component. Safe here: the returned values
+  // (getVirtualItems/getTotalSize) stay local to this render and are never
+  // passed into a memoized child.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const rowVirtualizer = useVirtualizer({
     count: data.tasks.length,
     getScrollElement: () => parentRef.current,
