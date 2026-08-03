@@ -1,0 +1,9 @@
+Title,Description,Reach,Effort
+Fix credit card fraud detection false negatives,Fraud detection model is missing roughly 12% of confirmed fraudulent transactions leading to direct financial loss and compliance exposure under SOC2,800,5
+Add dark mode to settings page,Users have requested a dark mode toggle in the appearance settings for eye comfort,150,2
+Improve expense report CSV export formatting,Export CSV column headers are inconsistent and break downstream accounting imports,300,1
+Redesign onboarding checklist widget,Cosmetic refresh of the onboarding checklist card on the dashboard,90,3
+Add SSO support for enterprise customers,Several enterprise prospects are blocked on deals pending SAML SSO support,,8
+Investigate compliance audit logging gaps,SOC2 auditors flagged missing audit trail entries for approval actions taken via the mobile app,,4
+Speed up dashboard load time,Dashboard takes 6+ seconds to load for accounts with 10k+ transactions hurting daily active usage,1200,6
+Typo fix in footer copyright year,Footer still shows last year's copyright year,,1

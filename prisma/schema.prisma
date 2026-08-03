@@ -1,0 +1,176 @@
+// Prisma schema for the Backlog Prioritisation Tool.
+//
+// Dev datasource is SQLite (zero-infra, runs in-container). Field types are kept
+// portable to Postgres/Supabase on purpose: no SQLite-only features, and enums are
+// modeled as validated String columns (Prisma enums aren't supported on SQLite)
+// rather than native Postgres enums, so the same schema works unchanged after
+// switching the datasource provider + adapter to Postgres.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ── Product context ──────────────────────────────────────────────────────────
+// Versioned. Every edit creates a new version instead of mutating in place, so a
+// score_run can record exactly which product context version it ran against.
+model ProductContext {
+  id                 String   @id @default(cuid())
+  version            Int
+  isActive           Boolean  @default(true)
+  productDescription String
+  goals              String // Json: string[]
+  okrs               String // Json: { objective: string, keyResults: string[] }[]
+  northStarMetric    String
+  supportingMetrics  String // Json: string[]
+  priorityAreas      String // Json: string[] (feeds org rule conditions later)
+  targetSegments     String // Json: string[]
+  constraints        String   @default("")
+  freeText           String   @default("")
+  createdAt          DateTime @default(now())
+
+  scoreRuns ScoreRun[]
+
+  @@index([version])
+}
+
+// ── App-wide configuration, set entirely through the UI ─────────────────────
+model AppConfig {
+  id                   String   @id @default(cuid())
+  llmProvider          String   @default("anthropic")
+  llmModel             String   @default("claude-sonnet-5")
+  confidenceThreshold  Float    @default(70) // 0-100; below this a value is "low confidence"
+  extractionBatchSize  Int      @default(10)
+  extractionMaxRetries Int      @default(2)
+  defaultEffortUnit    String   @default("person_weeks") // person_weeks | fibonacci
+  defaultExportFormat  String   @default("csv") // csv | xlsx | json
+  updatedAt            DateTime @updatedAt
+}
+
+// ── Backlog ───────────────────────────────────────────────────────────────
+model Backlog {
+  id             String   @id @default(cuid())
+  name           String
+  sourceFileName String
+  sourceFileType String // csv | xlsx
+  rawHeaders     String // Json: string[] of original column headers
+  columnMapping  String // Json: Record<targetField, sourceColumn | null>
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tasks     Task[]
+  scoreRuns ScoreRun[]
+}
+
+// ── Task ──────────────────────────────────────────────────────────────────
+model Task {
+  id          String   @id @default(cuid())
+  backlogId   String
+  backlog     Backlog  @relation(fields: [backlogId], references: [id], onDelete: Cascade)
+  rowIndex    Int // original row order in the source file
+  rawFields   String // Json: the full original row, untouched
+  title       String
+  description String   @default("")
+  createdAt   DateTime @default(now())
+
+  signals    TaskSignal[]
+  taskScores TaskScore[]
+
+  @@index([backlogId])
+}
+
+// ── Signal layer ──────────────────────────────────────────────────────────
+// One row per (task, signal). This is the shared layer every framework reads from.
+model TaskSignal {
+  id           String   @id @default(cuid())
+  taskId       String
+  task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  signal       String // reach | value | impact | effort | confidence | urgency | risk | category
+  valueNumeric Float?
+  valueText    String? // used for category, and for effort's Fibonacci label if non-numeric
+  source       String // csv | ai | human | gap
+  confidence   Float? // 0-100, only meaningful when source = ai
+  rationale    String   @default("") // why the model placed this value (e.g. which OKR it maps to)
+  updatedAt    DateTime @updatedAt
+
+  @@unique([taskId, signal])
+  @@index([taskId])
+}
+
+// ── Framework configuration ─────────────────────────────────────────────────
+model FrameworkConfig {
+  id         String   @id @default(cuid())
+  key        String // rice | ice | wsjf | value_effort | weighted | cd3 | moscow
+  name       String
+  isActive   Boolean  @default(false)
+  parameters String // Json: framework-specific parameters (e.g. weighted criteria/weights)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  scoreRuns ScoreRun[]
+}
+
+// ── Organisation rules engine (schema in place; rule authoring UI is Phase 3) ─
+model OrgRule {
+  id        String   @id @default(cuid())
+  name      String
+  condition String // Json: { field, operator, value }
+  ruleType  String // override | floor_cap | boost_penalty
+  effect    String // Json: shape depends on ruleType
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ── Score runs ──────────────────────────────────────────────────────────────
+model ScoreRun {
+  id                String          @id @default(cuid())
+  backlogId         String
+  backlog           Backlog         @relation(fields: [backlogId], references: [id], onDelete: Cascade)
+  frameworkConfigId String
+  frameworkConfig   FrameworkConfig @relation(fields: [frameworkConfigId], references: [id])
+  productContextId  String?
+  productContext    ProductContext? @relation(fields: [productContextId], references: [id])
+  llmModel          String
+  status            String          @default("draft") // draft | committed
+  createdAt         DateTime        @default(now())
+  committedAt       DateTime?
+
+  taskScores  TaskScore[]
+  auditEvents AuditEvent[]
+
+  @@index([backlogId])
+}
+
+model TaskScore {
+  id                      String   @id @default(cuid())
+  scoreRunId              String
+  scoreRun                ScoreRun @relation(fields: [scoreRunId], references: [id], onDelete: Cascade)
+  taskId                  String
+  task                    Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  frameworkInputsSnapshot String // Json: the resolved signal values used, with source+confidence
+  math                    String   @default("") // human-readable formula with real numbers substituted
+  baseScore               Float
+  appliedRules            String   @default("[]") // Json: OrgRule[] applied, in precedence order
+  finalScore              Float
+  rank                    Int
+
+  @@unique([scoreRunId, taskId])
+  @@index([scoreRunId])
+}
+
+model AuditEvent {
+  id         String    @id @default(cuid())
+  scoreRunId String?
+  scoreRun   ScoreRun? @relation(fields: [scoreRunId], references: [id], onDelete: Cascade)
+  taskId     String?
+  eventType  String // extraction | signal_edited | rule_applied | commit
+  payload    String // Json
+  createdAt  DateTime  @default(now())
+
+  @@index([scoreRunId])
+}
