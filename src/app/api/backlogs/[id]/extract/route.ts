@@ -29,6 +29,7 @@ export async function POST(_request: Request, ctx: RouteContext<"/api/backlogs/[
   const batchSize = config?.extractionBatchSize ?? 10;
   const maxRetries = config?.extractionMaxRetries ?? 2;
   const model = config?.llmModel ?? "claude-sonnet-5";
+  const providerId = config?.llmProvider ?? "anthropic";
 
   const productContextRow = await prisma.productContext.findFirst({
     where: { isActive: true },
@@ -58,7 +59,7 @@ export async function POST(_request: Request, ctx: RouteContext<"/api/backlogs/[
         freeText: "",
       };
 
-  const provider = getAIProvider();
+  const provider = getAIProvider(providerId);
 
   const tasksNeedingWork = backlog.tasks
     .map((task) => {

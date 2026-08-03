@@ -1,6 +1,6 @@
 # Backlog Prioritisation Tool
 
-Ingests a backlog from CSV/XLSX, extracts scoring signals with Claude, projects them
+Ingests a backlog from CSV/XLSX, extracts scoring signals with an LLM, projects them
 through a prioritisation framework, and produces a single explainable ranked list with
 a human review gate before anything is committed. See the PRD for full scope.
 
@@ -23,10 +23,39 @@ Phase 4 (multi-backlog run comparison) is not in this pass.
 
 - Next.js (App Router) + Tailwind v4, hand-rolled shadcn/ui-style primitives (Radix UI)
 - Prisma ORM against Supabase Postgres via `@prisma/adapter-pg` (`pg` driver).
-- AI provider abstraction (`src/lib/ai`) — Claude via `@anthropic-ai/sdk` is the only
-  provider wired up (matches the PRD's v1 scope), behind an interface that keeps the
-  extraction prompt/JSON schema stable across models/providers.
+- AI provider abstraction (`src/lib/ai`) — four providers behind one interface (see
+  "AI providers" below) that keeps the extraction prompt/JSON schema stable regardless
+  of which model is selected.
 - SheetJS (`xlsx`) for CSV/XLSX parsing, server-side only.
+
+## AI providers
+
+Settings picks a provider + model per the PRD's configuration principle (no config
+files, no code edits). Four providers are wired up, beyond the PRD's stated v1 scope
+of Claude-only, all implementing the same `AIProvider.extractBatch` contract in
+`src/lib/ai/`:
+
+- **Anthropic (Claude)** — `claude-provider.ts`, via `@anthropic-ai/sdk` tool-use.
+  Fixed model dropdown (3 known-current IDs) since these come from this session's own
+  authoritative context.
+- **OpenAI (GPT)** — `openai-provider.ts`, via the `openai` SDK's Structured Outputs
+  (`response_format: json_schema`, strict mode).
+- **Google (Gemini)** — `google-provider.ts`, via `@google/genai`'s `responseSchema`.
+  Gemini's schema format (uppercase `Type` enum + a `nullable` flag) differs from
+  standard JSON Schema, so this provider carries a small adapter that converts the
+  shared schema once rather than maintaining a second copy of it.
+- **Ollama (self-hosted)** — `ollama-provider.ts`, via the official `ollama` package's
+  `format` field, which accepts the same JSON schema shape directly — no key needed,
+  reads `OLLAMA_BASE_URL` instead (see `.env.example`).
+
+All four share one prompt/schema definition (`shared-extraction.ts`) so the contract
+really is identical across providers, not just claimed to be. **OpenAI and Google's
+model IDs are a free-text field in Settings, not a dropdown** — their catalogs move
+faster than this app can track, and hardcoding a specific ID risked shipping one
+that's already stale or simply guessed. Ollama's models are inherently unbounded and
+local to whatever the user has pulled, so that's free-text too. Whichever provider is
+selected falls back to the deterministic mock provider if its key/URL isn't set, so
+the full pipeline stays testable without a live call regardless of provider choice.
 
 ## Design system
 
@@ -114,20 +143,24 @@ commit → export) against the live Supabase DB, because this sandbox can't reac
 code — only the datasource/adapter changed — but re-confirming against the real
 Postgres instance (locally, or via a Vercel deploy) is the one remaining check.
 
-### Running extraction against real Claude
+### Running extraction against a real model
 
-Set `ANTHROPIC_API_KEY` as a **server-side environment variable** (never enter it in the
-UI — the Settings screen only picks which model to use, per the PRD's explicit
-server-side-secret carve-out):
+Pick a provider in Settings, then set that provider's key as a **server-side
+environment variable** (never enter it in the UI — the Settings screen only picks
+which provider + model to use, per the PRD's explicit server-side-secret carve-out):
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
+export ANTHROPIC_API_KEY=sk-ant-...   # Anthropic
+export OPENAI_API_KEY=sk-...          # OpenAI
+export GOOGLE_API_KEY=...             # Google
+export OLLAMA_BASE_URL=http://localhost:11434   # Ollama — not a secret, but still server-side
 ```
 
-Without it, extraction runs against a deterministic mock provider (`src/lib/ai/mock-provider.ts`)
-so the full pipeline — import, extraction, review, scoring, commit, export — is
-exercisable end to end without a live model call. The Settings screen shows which mode
-is active.
+Without the selected provider's key/URL set, extraction runs against a deterministic
+mock provider (`src/lib/ai/mock-provider.ts`) so the full pipeline — import,
+extraction, review, scoring, commit, export — is exercisable end to end without a
+live model call. The Settings screen shows which mode is active for whichever
+provider is currently selected.
 
 ## Project layout
 
@@ -141,8 +174,9 @@ is active.
   (`getRequiredSignals`) rather than being fixed.
 - `src/lib/domain/org-rules.ts` — condition matching (category/keyword) and precedence
   (override > floor/cap > boost/penalty > base score) for the rules engine.
-- `src/lib/ai/` — provider abstraction (`AIProvider.extractBatch`), Claude implementation
-  using tool-use for structured output, mock provider for offline dev/testing.
+- `src/lib/ai/` — provider abstraction (`AIProvider.extractBatch`), four implementations
+  (Anthropic/OpenAI/Google/Ollama) sharing one prompt/schema definition, mock provider
+  for offline dev/testing.
 - `prisma/schema.prisma` — full data model from the PRD's Section 13 sketch.
 - `src/app/api/` — Route Handlers for import, extraction, scoring, org rules CRUD,
   framework config, commit, export.
@@ -182,6 +216,6 @@ choices rather than oversights:
 - Column-mapping "AI suggestion" is a deterministic header-synonym heuristic
   (`src/lib/domain/column-mapping.ts`), not a live model call — matching headers to
   fields doesn't need judgement, so it stays instant and free while the real extraction
-  (which does need judgement) goes through Claude.
+  (which does need judgement) goes through whichever LLM provider is selected.
 - Org rules engine, additional frameworks, and multi-backlog run comparison are Phase
   2-4 per the PRD's phasing — not in this pass.

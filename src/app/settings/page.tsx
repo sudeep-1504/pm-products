@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { AppShell } from "@/components/app-shell";
 import { SettingsForm } from "@/components/settings-form";
-import { CLAUDE_MODELS } from "@/lib/ai/types";
+import { PROVIDER_CATALOG } from "@/lib/ai/types";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +10,14 @@ export default async function SettingsPage() {
   if (!config) {
     config = await prisma.appConfig.create({ data: {} });
   }
+
+  const providers = Object.values(PROVIDER_CATALOG).map((p) => ({
+    id: p.id,
+    label: p.label,
+    models: p.models ?? null,
+    modelPlaceholder: p.modelPlaceholder ?? null,
+    configured: p.apiKeyEnvVar ? Boolean(process.env[p.apiKeyEnvVar]) : Boolean(process.env.OLLAMA_BASE_URL),
+  }));
 
   return (
     <AppShell>
@@ -21,6 +29,7 @@ export default async function SettingsPage() {
       </div>
       <SettingsForm
         initial={{
+          llmProvider: config.llmProvider,
           llmModel: config.llmModel,
           confidenceThreshold: config.confidenceThreshold,
           extractionBatchSize: config.extractionBatchSize,
@@ -28,8 +37,7 @@ export default async function SettingsPage() {
           defaultEffortUnit: config.defaultEffortUnit,
           defaultExportFormat: config.defaultExportFormat,
         }}
-        availableModels={[...CLAUDE_MODELS]}
-        hasApiKey={Boolean(process.env.ANTHROPIC_API_KEY)}
+        providers={providers}
       />
     </AppShell>
   );

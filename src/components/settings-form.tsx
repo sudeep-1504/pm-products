@@ -9,17 +9,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 
-interface ModelOption {
+interface ProviderStatus {
   id: string;
   label: string;
+  models: readonly { id: string; label: string }[] | null;
+  modelPlaceholder: string | null;
+  configured: boolean;
 }
 
 export function SettingsForm({
   initial,
-  availableModels,
-  hasApiKey,
+  providers,
 }: {
   initial: {
+    llmProvider: string;
     llmModel: string;
     confidenceThreshold: number;
     extractionBatchSize: number;
@@ -27,11 +30,25 @@ export function SettingsForm({
     defaultEffortUnit: string;
     defaultExportFormat: string;
   };
-  availableModels: ModelOption[];
-  hasApiKey: boolean;
+  providers: ProviderStatus[];
 }) {
   const [form, setForm] = useState(initial);
   const [saving, setSaving] = useState(false);
+
+  const selectedProvider = providers.find((p) => p.id === form.llmProvider) ?? providers[0];
+
+  function handleProviderChange(providerId: string) {
+    const provider = providers.find((p) => p.id === providerId);
+    setForm((f) => ({
+      ...f,
+      llmProvider: providerId,
+      // Switching into a fixed-model-list provider: default to its first
+      // model unless the current value already belongs to that list.
+      llmModel: provider?.models?.some((m) => m.id === f.llmModel)
+        ? f.llmModel
+        : (provider?.models?.[0]?.id ?? ""),
+    }));
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -56,33 +73,69 @@ export function SettingsForm({
         <CardHeader>
           <CardTitle>Model</CardTitle>
           <CardDescription className="text-xs">
-            {hasApiKey ? (
-              <Badge variant="success">Live extraction (ANTHROPIC_API_KEY configured)</Badge>
+            {selectedProvider?.configured ? (
+              <Badge variant="success">
+                Live extraction ({selectedProvider.id === "ollama" ? "OLLAMA_BASE_URL" : `${selectedProvider.id.toUpperCase()}_API_KEY`} configured)
+              </Badge>
             ) : (
               <Badge variant="flag">
-                No ANTHROPIC_API_KEY set — extraction runs against a mock provider for local testing
+                {selectedProvider?.id === "ollama"
+                  ? "No OLLAMA_BASE_URL set"
+                  : `No ${selectedProvider?.id.toUpperCase()}_API_KEY set`}{" "}
+                — extraction runs against a mock provider for local testing
               </Badge>
             )}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <Label>Provider &amp; model</Label>
-            <Select value={form.llmModel} onValueChange={(v) => setForm((f) => ({ ...f, llmModel: v }))}>
+            <Label>Provider</Label>
+            <Select value={form.llmProvider} onValueChange={handleProviderChange}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {availableModels.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.label}
+                {providers.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label>Model</Label>
+            {selectedProvider?.models ? (
+              <Select value={form.llmModel} onValueChange={(v) => setForm((f) => ({ ...f, llmModel: v }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {selectedProvider.models.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                value={form.llmModel}
+                onChange={(e) => setForm((f) => ({ ...f, llmModel: e.target.value }))}
+                placeholder={selectedProvider?.modelPlaceholder ?? "Model ID"}
+              />
+            )}
+            {!selectedProvider?.models && (
+              <p className="text-xs text-muted-foreground">
+                {selectedProvider?.id === "ollama"
+                  ? "Whatever model you've pulled locally (ollama pull <name>) — this app doesn't maintain a fixed list since it's unbounded and instance-specific."
+                  : "Typed freely rather than a fixed dropdown, since this provider's model catalog changes faster than this app can track — use the exact model ID from the provider's docs."}
+              </p>
+            )}
             <p className="text-xs text-muted-foreground">
-              Provider API keys are server-side secrets and are never entered here — configure
-              ANTHROPIC_API_KEY as a server environment variable.
+              Provider API keys are server-side secrets and are never entered here — configure them
+              as server environment variables (see README).
             </p>
           </div>
         </CardContent>
