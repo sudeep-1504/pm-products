@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getFramework } from "@/lib/domain/frameworks";
+import { getFramework, resolveRequiredSignals } from "@/lib/domain/frameworks";
+import { getOrCreateFrameworkConfig } from "@/lib/domain/framework-config-service";
 import { buildSignalMap } from "@/lib/domain/task-view";
 import { isGap, SignalKey } from "@/lib/domain/signals";
 import { getAIProvider, ExtractionTaskInput, ProductContextForExtraction } from "@/lib/ai";
@@ -17,10 +18,11 @@ export async function POST(_request: Request, ctx: RouteContext<"/api/backlogs/[
   });
   if (!backlog) return NextResponse.json({ error: "Backlog not found." }, { status: 404 });
 
-  const activeFramework = await prisma.frameworkConfig.findFirst({ where: { isActive: true } });
-  const framework = getFramework(activeFramework?.key ?? "rice");
+  const frameworkConfig = await getOrCreateFrameworkConfig(backlog.frameworkKey);
+  const framework = getFramework(backlog.frameworkKey);
+  const parameters = JSON.parse(frameworkConfig.parameters);
   const requiredSignals: SignalKey[] = Array.from(
-    new Set([...framework.requiredSignals, "category" as SignalKey])
+    new Set([...resolveRequiredSignals(framework, parameters), "category" as SignalKey])
   );
 
   const config = await prisma.appConfig.findFirst();

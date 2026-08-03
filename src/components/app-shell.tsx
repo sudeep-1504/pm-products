@@ -2,6 +2,8 @@ import Link from "next/link";
 
 const NAV_ITEMS = [
   { href: "/", label: "Backlogs" },
+  { href: "/org-rules", label: "Org Rules" },
+  { href: "/framework-config", label: "Framework Config" },
   { href: "/product-context", label: "Product Context" },
   { href: "/settings", label: "Settings" },
 ];

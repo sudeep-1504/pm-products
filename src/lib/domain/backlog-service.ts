@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { buildSignalMap, computeCompleteness } from "./task-view";
-import { getFramework } from "./frameworks";
+import { getFramework, resolveRequiredSignals } from "./frameworks";
+import { getOrCreateFrameworkConfig } from "./framework-config-service";
 
 export async function getBacklogReviewData(id: string) {
   const backlog = await prisma.backlog.findUnique({
@@ -12,15 +13,18 @@ export async function getBacklogReviewData(id: string) {
   });
   if (!backlog) return null;
 
-  const activeFramework = await prisma.frameworkConfig.findFirst({ where: { isActive: true } });
-  const framework = getFramework(activeFramework?.key ?? "rice");
+  const frameworkConfig = await getOrCreateFrameworkConfig(backlog.frameworkKey);
+  const framework = getFramework(backlog.frameworkKey);
+  const parameters = JSON.parse(frameworkConfig.parameters);
+  const requiredSignals = resolveRequiredSignals(framework, parameters);
+
   const config = await prisma.appConfig.findFirst();
   const confidenceThreshold = config?.confidenceThreshold ?? 70;
-  const displaySignals = Array.from(new Set([...framework.requiredSignals, "category" as const]));
+  const displaySignals = Array.from(new Set([...requiredSignals, "category" as const]));
 
   const tasks = backlog.tasks.map((task) => {
     const signalMap = buildSignalMap(task.signals);
-    const completeness = computeCompleteness(signalMap, framework.requiredSignals, confidenceThreshold);
+    const completeness = computeCompleteness(signalMap, requiredSignals, confidenceThreshold);
     return {
       id: task.id,
       rowIndex: task.rowIndex,
@@ -39,8 +43,9 @@ export async function getBacklogReviewData(id: string) {
       name: backlog.name,
       sourceFileName: backlog.sourceFileName,
       createdAt: backlog.createdAt,
+      frameworkKey: backlog.frameworkKey,
     },
-    framework: { key: framework.key, name: framework.name, requiredSignals: framework.requiredSignals },
+    framework: { key: framework.key, name: framework.name, requiredSignals },
     displaySignals,
     confidenceThreshold,
     tasks,

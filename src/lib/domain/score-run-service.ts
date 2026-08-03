@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import type { AppliedRuleRecord } from "./org-rules";
+import type { FrameworkInputUsed } from "./frameworks/types";
 
 export async function getScoreRunDetail(id: string) {
   const scoreRun = await prisma.scoreRun.findUnique({
@@ -34,8 +36,8 @@ export async function getScoreRunDetail(id: string) {
       baseScore: ts.baseScore,
       finalScore: ts.finalScore,
       math: ts.math,
-      appliedRules: JSON.parse(ts.appliedRules) as unknown[],
-      inputsUsed: JSON.parse(ts.frameworkInputsSnapshot) as unknown[],
+      appliedRules: JSON.parse(ts.appliedRules) as AppliedRuleRecord[],
+      inputsUsed: JSON.parse(ts.frameworkInputsSnapshot) as FrameworkInputUsed[],
       allSignals: ts.task.signals.map((s) => ({
         signal: s.signal,
         valueNumeric: s.valueNumeric,

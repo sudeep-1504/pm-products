@@ -59,6 +59,7 @@ model Backlog {
   sourceFileType String // csv | xlsx
   rawHeaders     String // Json: string[] of original column headers
   columnMapping  String // Json: Record<targetField, sourceColumn | null>
+  frameworkKey   String   @default("rice") // rice | ice | wsjf | value_effort | weighted | cd3 | moscow
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -104,9 +105,8 @@ model TaskSignal {
 // ── Framework configuration ─────────────────────────────────────────────────
 model FrameworkConfig {
   id         String   @id @default(cuid())
-  key        String // rice | ice | wsjf | value_effort | weighted | cd3 | moscow
+  key        String   @unique // rice | ice | wsjf | value_effort | weighted | cd3 | moscow
   name       String
-  isActive   Boolean  @default(false)
   parameters String // Json: framework-specific parameters (e.g. weighted criteria/weights)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -114,7 +114,7 @@ model FrameworkConfig {
   scoreRuns ScoreRun[]
 }
 
-// ── Organisation rules engine (schema in place; rule authoring UI is Phase 3) ─
+// ── Organisation rules engine ────────────────────────────────────────────────
 model OrgRule {
   id        String   @id @default(cuid())
   name      String

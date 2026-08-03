@@ -14,6 +14,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { SIGNAL_LABELS, SignalKey } from "@/lib/domain/signals";
+import { effectSummary } from "@/lib/domain/org-rules";
 import type { ScoreRunDetail } from "@/lib/domain/score-run-service";
 
 type RankedTask = ScoreRunDetail["rankedTasks"][number];
@@ -23,6 +24,7 @@ export function RankedList({ backlogId, initial }: { backlogId: string; initial:
   const [data, setData] = useState(initial);
   const [selected, setSelected] = useState<RankedTask | null>(null);
   const [committing, setCommitting] = useState(false);
+  const [recomputing, setRecomputing] = useState(false);
 
   async function handleCommit() {
     setCommitting(true);
@@ -36,6 +38,22 @@ export function RankedList({ backlogId, initial }: { backlogId: string; initial:
       toast.error(err instanceof Error ? err.message : "Failed to commit.");
     } finally {
       setCommitting(false);
+    }
+  }
+
+  async function handleRecompute() {
+    setRecomputing(true);
+    try {
+      const res = await fetch(`/api/backlogs/${backlogId}/score`, { method: "POST" });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? "Failed to recompute.");
+      toast.success("Recomputed against current org rules.");
+      router.push(`/backlogs/${backlogId}/ranked?run=${body.scoreRunId}`);
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to recompute.");
+    } finally {
+      setRecomputing(false);
     }
   }
 
@@ -62,6 +80,9 @@ export function RankedList({ backlogId, initial }: { backlogId: string; initial:
           <Button variant="outline" asChild>
             <a href={`/backlogs/${backlogId}/review`}>Back to review</a>
           </Button>
+          <Button variant="outline" onClick={handleRecompute} disabled={recomputing}>
+            {recomputing ? "Recomputing..." : "Recompute (org rules)"}
+          </Button>
           {data.scoreRun.status !== "committed" && (
             <Button onClick={handleCommit} disabled={committing}>
               {committing ? "Committing..." : "Commit rank"}
@@ -77,20 +98,34 @@ export function RankedList({ backlogId, initial }: { backlogId: string; initial:
               <TableHead className="w-14">Rank</TableHead>
               <TableHead>Title</TableHead>
               <TableHead>Category</TableHead>
+              <TableHead>Rules</TableHead>
               <TableHead className="text-right">Score</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.rankedTasks.map((t) => (
-              <TableRow key={t.taskId} className="cursor-pointer" onClick={() => setSelected(t)}>
-                <TableCell className="font-semibold">#{t.rank}</TableCell>
-                <TableCell className="max-w-md truncate">{t.title}</TableCell>
-                <TableCell>
-                  {categoryOf(t) ? <Badge variant="muted">{categoryOf(t)}</Badge> : "—"}
-                </TableCell>
-                <TableCell className="text-right font-semibold">{t.finalScore.toFixed(2)}</TableCell>
-              </TableRow>
-            ))}
+            {data.rankedTasks.map((t) => {
+              const override = t.appliedRules.find((r) => r.ruleType === "override");
+              const other = t.appliedRules.filter((r) => r.ruleType !== "override");
+              return (
+                <TableRow key={t.taskId} className="cursor-pointer" onClick={() => setSelected(t)}>
+                  <TableCell className="font-semibold">#{t.rank}</TableCell>
+                  <TableCell className="max-w-md truncate">{t.title}</TableCell>
+                  <TableCell>
+                    {categoryOf(t) ? <Badge variant="muted">{categoryOf(t)}</Badge> : "—"}
+                  </TableCell>
+                  <TableCell>
+                    {override ? (
+                      <Badge variant="override">Override: {override.name}</Badge>
+                    ) : other.length > 0 ? (
+                      <Badge variant="flag">{other.length} rule(s)</Badge>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right font-semibold">{t.finalScore.toFixed(2)}</TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
@@ -141,11 +176,22 @@ export function RankedList({ backlogId, initial }: { backlogId: string; initial:
                   </h3>
                   {selected.appliedRules.length === 0 ? (
                     <p className="text-muted-foreground">
-                      None. The org rules engine ships in a later phase — every task is ranked on
-                      framework score alone for now.
+                      No org rule matched this task — its rank comes from framework score alone.
                     </p>
                   ) : (
-                    <pre className="whitespace-pre-wrap">{JSON.stringify(selected.appliedRules, null, 2)}</pre>
+                    <div className="flex flex-col gap-2">
+                      {selected.appliedRules.map((r, i) => (
+                        <div key={i} className="flex items-center justify-between border-2 border-border p-2">
+                          <div>
+                            <p className="font-medium">{r.name}</p>
+                            <p className="text-xs text-muted-foreground">{r.ruleType.replace("_", "/")}</p>
+                          </div>
+                          <Badge variant={r.ruleType === "override" ? "override" : "flag"}>
+                            {effectSummary(r.effect)}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </section>
 

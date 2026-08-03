@@ -25,6 +25,16 @@ export interface Framework {
   key: string;
   name: string;
   description: string;
+  /** Static default. Frameworks whose inputs depend on stored config (Weighted
+   * Scoring) override this via getRequiredSignals instead. */
   requiredSignals: SignalKey[];
-  compute(signals: SignalMap): FrameworkResult;
+  /** Only present when required signals depend on this framework's stored
+   * parameters rather than being fixed. Callers should prefer this over
+   * `requiredSignals` when present — see resolveRequiredSignals(). */
+  getRequiredSignals?: (parameters: unknown) => SignalKey[];
+  compute(signals: SignalMap, parameters?: unknown): FrameworkResult;
+}
+
+export function resolveRequiredSignals(framework: Framework, parameters: unknown): SignalKey[] {
+  return framework.getRequiredSignals ? framework.getRequiredSignals(parameters) : framework.requiredSignals;
 }

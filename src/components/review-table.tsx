@@ -9,7 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SIGNAL_LABELS, SignalKey, SignalValue } from "@/lib/domain/signals";
+import { FRAMEWORK_LIST } from "@/lib/domain/frameworks";
 import type { BacklogReviewData } from "@/lib/domain/backlog-service";
 
 type TaskRow = BacklogReviewData["tasks"][number];
@@ -33,6 +35,8 @@ export function ReviewTable({
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [extracting, setExtracting] = useState(false);
   const [scoring, setScoring] = useState(false);
+  const [switchingFramework, setSwitchingFramework] = useState(false);
+  const [pendingFramework, setPendingFramework] = useState(data.framework.key);
   const parentRef = useRef<HTMLDivElement>(null);
 
   const rowVirtualizer = useVirtualizer({
@@ -56,6 +60,27 @@ export function ReviewTable({
   async function refetch() {
     const res = await fetch(`/api/backlogs/${backlogId}`);
     if (res.ok) setData(await res.json());
+  }
+
+  async function switchFramework() {
+    if (pendingFramework === data.framework.key) return;
+    setSwitchingFramework(true);
+    try {
+      const res = await fetch(`/api/backlogs/${backlogId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ frameworkKey: pendingFramework }),
+      });
+      if (!res.ok) throw new Error("Failed to switch framework.");
+      toast.success(
+        "Framework switched. Signals are reused — any new required signal shows up as a gap below."
+      );
+      await refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to switch framework.");
+    } finally {
+      setSwitchingFramework(false);
+    }
   }
 
   async function runExtraction() {
@@ -162,6 +187,27 @@ export function ReviewTable({
 
   return (
     <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-3 border-2 border-border p-3">
+        <span className="text-xs uppercase tracking-wider text-muted-foreground">Framework</span>
+        <Select value={pendingFramework} onValueChange={setPendingFramework}>
+          <SelectTrigger className="w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {FRAMEWORK_LIST.map((f) => (
+              <SelectItem key={f.key} value={f.key}>
+                {f.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {pendingFramework !== data.framework.key && (
+          <Button size="sm" onClick={switchFramework} disabled={switchingFramework}>
+            {switchingFramework ? "Switching..." : "Switch (reuses signals)"}
+          </Button>
+        )}
+      </div>
+
       <div className="flex flex-wrap items-center justify-between gap-3 border-2 border-border p-3">
         <div className="flex items-center gap-3">
           <Button onClick={runExtraction} disabled={extracting} variant="outline">

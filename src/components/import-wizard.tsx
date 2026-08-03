@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { MAPPABLE_FIELDS, MappableField } from "@/lib/domain/column-mapping";
+import { FRAMEWORK_LIST, getFramework } from "@/lib/domain/frameworks";
+import { SIGNAL_LABELS, SignalKey } from "@/lib/domain/signals";
 
 type Mapping = Record<MappableField, string | null>;
 
@@ -47,6 +49,7 @@ export function ImportWizard() {
   const [preview, setPreview] = useState<PreviewData | null>(null);
   const [mapping, setMapping] = useState<Mapping | null>(null);
   const [name, setName] = useState("");
+  const [framework, setFramework] = useState("rice");
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -91,6 +94,7 @@ export function ImportWizard() {
       form.append("file", file);
       form.append("name", name.trim());
       form.append("columnMapping", JSON.stringify(mapping));
+      form.append("framework", framework);
       const res = await fetch("/api/backlogs", { method: "POST", body: form });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? "Failed to create backlog.");
@@ -188,10 +192,26 @@ export function ImportWizard() {
         <CardHeader>
           <CardTitle>Framework</CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm">
-            <span className="font-mono font-semibold">RICE</span> — (Reach x Impact x Confidence) / Effort.
-            Phase 1 ships RICE only; more frameworks read the same signal layer later.
+        <CardContent className="flex flex-col gap-3">
+          <Select value={framework} onValueChange={setFramework}>
+            <SelectTrigger className="max-w-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {FRAMEWORK_LIST.map((f) => (
+                <SelectItem key={f.key} value={f.key}>
+                  {f.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-sm text-muted-foreground">{getFramework(framework).description}</p>
+          <p className="text-xs">
+            Requires:{" "}
+            {getFramework(framework)
+              .requiredSignals.map((s: SignalKey) => SIGNAL_LABELS[s])
+              .join(", ")}
+            {framework === "weighted" && " (default criteria — edit weights after creating the backlog)"}
           </p>
         </CardContent>
       </Card>

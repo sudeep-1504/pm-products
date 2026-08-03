@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { parseSpreadsheet } from "@/lib/domain/file-parse";
 import { MAPPABLE_FIELDS, MappableField, mappableFieldToSignal } from "@/lib/domain/column-mapping";
+import { FRAMEWORKS, DEFAULT_WEIGHTED_PARAMETERS } from "@/lib/domain/frameworks";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +50,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "A title column must be mapped." }, { status: 400 });
   }
 
+  const frameworkKey = String(form.get("framework") ?? "rice");
+  if (!FRAMEWORKS[frameworkKey]) {
+    return NextResponse.json({ error: `Unknown framework: ${frameworkKey}` }, { status: 400 });
+  }
+
   let headers: string[];
   let rows: Record<string, string>[];
   try {
@@ -71,6 +77,7 @@ export async function POST(request: Request) {
         sourceFileType: fileType,
         rawHeaders: JSON.stringify(headers),
         columnMapping: JSON.stringify(columnMapping),
+        frameworkKey,
       },
     });
 
@@ -138,11 +145,14 @@ export async function POST(request: Request) {
       await tx.taskSignal.createMany({ data: signalRows });
     }
 
-    // Phase 1 ships RICE only; ensure a framework config exists and is active.
-    const existingFramework = await tx.frameworkConfig.findFirst({ where: { key: "rice" } });
+    const existingFramework = await tx.frameworkConfig.findUnique({ where: { key: frameworkKey } });
     if (!existingFramework) {
       await tx.frameworkConfig.create({
-        data: { key: "rice", name: "RICE", isActive: true, parameters: "{}" },
+        data: {
+          key: frameworkKey,
+          name: FRAMEWORKS[frameworkKey].name,
+          parameters: frameworkKey === "weighted" ? JSON.stringify(DEFAULT_WEIGHTED_PARAMETERS) : "{}",
+        },
       });
     }
 
