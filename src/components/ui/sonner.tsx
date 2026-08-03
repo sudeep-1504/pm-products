@@ -10,7 +10,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       toastOptions={{
         classNames: {
           toast:
-            "group toast rounded-none border-2 border-foreground bg-background text-foreground font-mono text-sm",
+            "group toast rounded-lg border border-border bg-background text-foreground font-mono text-sm shadow-lg shadow-foreground/10",
         },
       }}
       {...props}

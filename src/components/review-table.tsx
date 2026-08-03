@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ShimmerButton } from "@/components/magicui/shimmer-button";
 import { SIGNAL_LABELS, SignalKey, SignalValue } from "@/lib/domain/signals";
 import { FRAMEWORK_LIST } from "@/lib/domain/frameworks";
 import type { BacklogReviewData } from "@/lib/domain/backlog-service";
@@ -192,7 +193,7 @@ export function ReviewTable({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-3 border-2 border-border p-3">
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-sm shadow-foreground/[0.03]">
         <span className="text-xs uppercase tracking-wider text-muted-foreground">Framework</span>
         <Select value={pendingFramework} onValueChange={setPendingFramework}>
           <SelectTrigger className="w-48">
@@ -213,7 +214,7 @@ export function ReviewTable({
         )}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-2 border-border p-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 shadow-sm shadow-foreground/[0.03]">
         <div className="flex items-center gap-3">
           <Button onClick={runExtraction} disabled={extracting} variant="outline">
             {extracting ? "Running extraction..." : "Run AI Extraction"}
@@ -229,16 +230,20 @@ export function ReviewTable({
             </span>
             <Progress value={resolvedFraction} />
           </div>
-          <Button onClick={runScoring} disabled={!data.canScore || scoring}>
-            {scoring ? "Scoring..." : "Run Scoring"}
-          </Button>
+          {data.canScore ? (
+            <ShimmerButton onClick={runScoring} disabled={scoring}>
+              {scoring ? "Scoring..." : "Run Scoring"}
+            </ShimmerButton>
+          ) : (
+            <Button disabled>Run Scoring</Button>
+          )}
         </div>
       </div>
 
-      <div ref={parentRef} className="max-h-[70vh] overflow-auto border-2 border-border">
+      <div ref={parentRef} className="max-h-[70vh] overflow-auto rounded-xl border border-border">
         <table className="w-full border-collapse text-sm font-mono">
           <thead className="sticky top-0 z-10 bg-background">
-            <tr className="border-b-2 border-border">
+            <tr className="border-b border-border">
               <th className="w-12 px-2 py-2 text-left text-[11px] uppercase text-muted-foreground">#</th>
               <th className="min-w-56 px-2 py-2 text-left text-[11px] uppercase text-muted-foreground">Title</th>
               {data.displaySignals.map((s) => (
@@ -254,7 +259,7 @@ export function ReviewTable({
               return (
                 <tr
                   key={task.id}
-                  className="absolute left-0 flex w-full border-b border-border hover:bg-muted"
+                  className="absolute left-0 flex w-full border-b border-border transition-colors duration-150 hover:bg-muted"
                   style={{ transform: `translateY(${virtualRow.start}px)`, height: virtualRow.size }}
                 >
                   <td className="w-12 px-2 py-2 text-muted-foreground">{task.rowIndex + 1}</td>
@@ -284,9 +289,13 @@ export function ReviewTable({
                           />
                         ) : (
                           <button
-                            className={`flex items-center gap-1.5 border px-1.5 py-1 text-left ${
-                              isGap ? "border-gap" : isLow ? "border-flag" : "border-transparent"
-                            } hover:border-foreground`}
+                            className={`flex items-center gap-1.5 rounded-md border px-1.5 py-1 text-left transition-colors duration-150 ${
+                              isGap
+                                ? "border-gap/40 bg-gap-soft"
+                                : isLow
+                                  ? "border-flag/40 bg-flag-soft"
+                                  : "border-transparent hover:border-border-strong"
+                            }`}
                             onClick={() => setEditing({ taskId: task.id, signal })}
                           >
                             {isGap ? (

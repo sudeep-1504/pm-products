@@ -13,6 +13,8 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
+import { NumberTicker } from "@/components/magicui/number-ticker";
+import { BorderBeam } from "@/components/magicui/border-beam";
 import { SIGNAL_LABELS, SignalKey } from "@/lib/domain/signals";
 import { effectSummary } from "@/lib/domain/org-rules";
 import type { ScoreRunDetail } from "@/lib/domain/score-run-service";
@@ -58,14 +60,14 @@ export function RankedList({ backlogId, initial }: { backlogId: string; initial:
   }
 
   const categoryOf = (t: RankedTask) => t.allSignals.find((s) => s.signal === "category")?.valueText;
+  const isCommitted = data.scoreRun.status === "committed";
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-2 border-border p-3">
+      <div className="relative flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-xl border border-border bg-card p-3 shadow-sm shadow-foreground/[0.03]">
+        {isCommitted && <BorderBeam size={70} duration={10} colorFrom="var(--color-success)" colorTo="transparent" />}
         <div className="flex items-center gap-2">
-          <Badge variant={data.scoreRun.status === "committed" ? "success" : "muted"}>
-            {data.scoreRun.status === "committed" ? "Committed" : "Draft"}
-          </Badge>
+          <Badge variant={isCommitted ? "success" : "muted"}>{isCommitted ? "Committed" : "Draft"}</Badge>
           <span className="font-mono text-xs text-muted-foreground">
             {data.scoreRun.framework.name} · {data.scoreRun.llmModel}
           </span>
@@ -83,7 +85,7 @@ export function RankedList({ backlogId, initial }: { backlogId: string; initial:
           <Button variant="outline" onClick={handleRecompute} disabled={recomputing}>
             {recomputing ? "Recomputing..." : "Recompute (org rules)"}
           </Button>
-          {data.scoreRun.status !== "committed" && (
+          {!isCommitted && (
             <Button onClick={handleCommit} disabled={committing}>
               {committing ? "Committing..." : "Commit rank"}
             </Button>
@@ -91,7 +93,7 @@ export function RankedList({ backlogId, initial }: { backlogId: string; initial:
         </div>
       </div>
 
-      <div className="overflow-x-auto border-2 border-border">
+      <div className="overflow-x-auto rounded-xl border border-border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -107,7 +109,11 @@ export function RankedList({ backlogId, initial }: { backlogId: string; initial:
               const override = t.appliedRules.find((r) => r.ruleType === "override");
               const other = t.appliedRules.filter((r) => r.ruleType !== "override");
               return (
-                <TableRow key={t.taskId} className="cursor-pointer" onClick={() => setSelected(t)}>
+                <TableRow
+                  key={t.taskId}
+                  className="cursor-pointer"
+                  onClick={() => setSelected(t)}
+                >
                   <TableCell className="font-semibold">#{t.rank}</TableCell>
                   <TableCell className="max-w-md truncate">{t.title}</TableCell>
                   <TableCell>
@@ -122,7 +128,9 @@ export function RankedList({ backlogId, initial }: { backlogId: string; initial:
                       "—"
                     )}
                   </TableCell>
-                  <TableCell className="text-right font-semibold">{t.finalScore.toFixed(2)}</TableCell>
+                  <TableCell className="text-right font-semibold">
+                    <NumberTicker value={t.finalScore} decimalPlaces={2} />
+                  </TableCell>
                 </TableRow>
               );
             })}
@@ -166,7 +174,7 @@ export function RankedList({ backlogId, initial }: { backlogId: string; initial:
                   <h3 className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">
                     Framework math
                   </h3>
-                  <p className="border-2 border-border p-2">{selected.math}</p>
+                  <p className="rounded-lg border border-border bg-muted p-2">{selected.math}</p>
                   <p className="mt-2 text-muted-foreground">Base score: {selected.baseScore.toFixed(3)}</p>
                 </section>
 
@@ -181,7 +189,7 @@ export function RankedList({ backlogId, initial }: { backlogId: string; initial:
                   ) : (
                     <div className="flex flex-col gap-2">
                       {selected.appliedRules.map((r, i) => (
-                        <div key={i} className="flex items-center justify-between border-2 border-border p-2">
+                        <div key={i} className="flex items-center justify-between rounded-lg border border-border p-2">
                           <div>
                             <p className="font-medium">{r.name}</p>
                             <p className="text-xs text-muted-foreground">{r.ruleType.replace("_", "/")}</p>
@@ -195,10 +203,10 @@ export function RankedList({ backlogId, initial }: { backlogId: string; initial:
                   )}
                 </section>
 
-                <section className="border-t-2 border-border pt-3">
+                <section className="border-t border-border pt-3">
                   <div className="flex items-center justify-between text-base font-semibold">
                     <span>Final score</span>
-                    <span>{selected.finalScore.toFixed(3)}</span>
+                    <NumberTicker value={selected.finalScore} decimalPlaces={3} />
                   </div>
                 </section>
               </div>

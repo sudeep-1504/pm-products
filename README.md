@@ -28,6 +28,19 @@ Phase 4 (multi-backlog run comparison) is not in this pass.
   extraction prompt/JSON schema stable across models/providers.
 - SheetJS (`xlsx`) for CSV/XLSX parsing, server-side only.
 
+## Design system
+
+Rounded corners (radius scale in `globals.css`), soft tinted shadows instead of hard
+borders, and a `motion`-powered transition layer on every interactive primitive
+(`src/components/ui/`) — hover/active states, smooth open/close on dialogs, sheets,
+selects, and dropdowns. `magicui.design` itself is unreachable from this sandbox's
+network allowlist, so the four Magic UI components in use (`src/components/magicui/`)
+are hand-built from the well-known open patterns rather than pulled from their
+registry: `NumberTicker` (spring count-up, used for scores/ranks), `BorderBeam`
+(a light trail around a container's perimeter, used sparingly — e.g. a committed score
+run), `ShimmerButton` (continuous light sweep, reserved for the single primary action
+per screen), and `BlurFade` (staggered fade+blur+y-offset entrance for lists/cards).
+
 ## Database: Supabase Postgres
 
 Project: `pm-products-backlog-prioritisation` (ref `iirbnjkzpzuuofydvhgm`, `ap-south-1`).

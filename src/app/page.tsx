@@ -4,6 +4,7 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BlurFade } from "@/components/magicui/blur-fade";
 
 export const dynamic = "force-dynamic";
 
@@ -52,29 +53,31 @@ export default async function DashboardPage() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {backlogs.map((b) => {
+            {backlogs.map((b, i) => {
               const run = b.scoreRuns[0];
               const href = run ? `/backlogs/${b.id}/ranked` : `/backlogs/${b.id}/review`;
               return (
-                <Link key={b.id} href={href}>
-                  <Card className="h-full transition-colors hover:bg-muted">
-                    <CardHeader>
-                      <CardTitle className="flex items-center justify-between text-foreground normal-case tracking-normal text-sm font-medium">
-                        {b.name}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex flex-col gap-2">
-                      <p className="text-xs text-muted-foreground">{b._count.tasks} tasks</p>
-                      {run ? (
-                        <Badge variant={run.status === "committed" ? "success" : "muted"}>
-                          {run.status === "committed" ? "Committed" : "Draft run"}
-                        </Badge>
-                      ) : (
-                        <Badge variant="flag">Needs review</Badge>
-                      )}
-                    </CardContent>
-                  </Card>
-                </Link>
+                <BlurFade key={b.id} delay={i * 0.05}>
+                  <Link href={href}>
+                    <Card className="h-full transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-foreground/[0.06] hover:border-foreground/20">
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between text-foreground normal-case tracking-normal text-sm font-medium">
+                          {b.name}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="flex flex-col gap-2">
+                        <p className="text-xs text-muted-foreground">{b._count.tasks} tasks</p>
+                        {run ? (
+                          <Badge variant={run.status === "committed" ? "success" : "muted"}>
+                            {run.status === "committed" ? "Committed" : "Draft run"}
+                          </Badge>
+                        ) : (
+                          <Badge variant="flag">Needs review</Badge>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </Link>
+                </BlurFade>
               );
             })}
           </div>

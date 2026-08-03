@@ -5,7 +5,10 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card"
-      className={cn("rounded-none border-2 border-border bg-card", className)}
+      className={cn(
+        "rounded-xl border border-border bg-card shadow-sm shadow-foreground/[0.03] transition-shadow duration-200 ease-out",
+        className
+      )}
       {...props}
     />
   );
@@ -15,7 +18,7 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-header"
-      className={cn("flex flex-col gap-1 border-b-2 border-border px-4 py-3", className)}
+      className={cn("flex flex-col gap-1 border-b border-border px-4 py-3", className)}
       {...props}
     />
   );
@@ -43,7 +46,7 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-footer"
-      className={cn("flex items-center border-t-2 border-border px-4 py-3", className)}
+      className={cn("flex items-center border-t border-border px-4 py-3", className)}
       {...props}
     />
   );

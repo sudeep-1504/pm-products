@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ShimmerButton } from "@/components/magicui/shimmer-button";
 import { MAPPABLE_FIELDS, MappableField } from "@/lib/domain/column-mapping";
 import { FRAMEWORK_LIST, getFramework } from "@/lib/domain/frameworks";
 import { SIGNAL_LABELS, SignalKey } from "@/lib/domain/signals";
@@ -113,12 +114,14 @@ export function ImportWizard() {
         <CardContent className="py-10">
           <div
             {...getRootProps()}
-            className={`flex cursor-pointer flex-col items-center justify-center gap-3 border-2 border-dashed p-12 text-center transition-colors ${
-              isDragActive ? "border-foreground bg-muted" : "border-border"
+            className={`group flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-12 text-center transition-all duration-200 ease-out ${
+              isDragActive
+                ? "border-foreground bg-muted scale-[1.01]"
+                : "border-border-strong hover:border-foreground/40 hover:bg-muted/50"
             }`}
           >
             <input {...getInputProps()} />
-            <UploadCloud className="size-8" />
+            <UploadCloud className="size-8 text-muted-foreground transition-transform duration-200 group-hover:scale-110" />
             <p className="text-sm font-medium">
               {loadingPreview ? "Parsing..." : "Drop a CSV or XLSX here, or click to browse"}
             </p>
@@ -220,9 +223,9 @@ export function ImportWizard() {
         <Button variant="outline" onClick={() => { setFile(null); setPreview(null); }}>
           Choose a different file
         </Button>
-        <Button onClick={handleCreate} disabled={submitting || !mapping?.title || !name.trim()}>
+        <ShimmerButton onClick={handleCreate} disabled={submitting || !mapping?.title || !name.trim()}>
           {submitting ? "Creating..." : "Create backlog"}
-        </Button>
+        </ShimmerButton>
       </div>
     </div>
   );

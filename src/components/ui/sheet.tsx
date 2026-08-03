@@ -27,7 +27,7 @@ function SheetOverlay({ className, ...props }: React.ComponentProps<typeof Dialo
     <DialogPrimitive.Overlay
       data-slot="sheet-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-foreground/20 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+        "fixed inset-0 z-50 bg-foreground/25 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-300",
         className
       )}
       {...props}
@@ -36,16 +36,16 @@ function SheetOverlay({ className, ...props }: React.ComponentProps<typeof Dialo
 }
 
 const sheetVariants = cva(
-  "fixed z-50 gap-4 border-foreground bg-background p-6 shadow-none transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
+  "fixed z-50 gap-4 border-border bg-background p-6 shadow-2xl shadow-foreground/10 transition ease-out data-[state=closed]:duration-250 data-[state=open]:duration-350",
   {
     variants: {
       side: {
         right:
-          "inset-y-0 right-0 h-full w-3/4 border-l-2 sm:max-w-xl data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
-        left: "inset-y-0 left-0 h-full w-3/4 border-r-2 sm:max-w-xl data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left",
-        top: "inset-x-0 top-0 h-auto border-b-2 data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
+          "inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-xl data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
+        left: "inset-y-0 left-0 h-full w-3/4 border-r sm:max-w-xl data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left",
+        top: "inset-x-0 top-0 h-auto border-b data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
         bottom:
-          "inset-x-0 bottom-0 h-auto border-t-2 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+          "inset-x-0 bottom-0 h-auto border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
       },
     },
     defaultVariants: { side: "right" },
@@ -67,7 +67,7 @@ function SheetContent({
         {...props}
       >
         {children}
-        <DialogPrimitive.Close className="absolute top-4 right-4 opacity-70 transition-opacity hover:opacity-100 focus:outline-none">
+        <DialogPrimitive.Close className="absolute top-4 right-4 rounded-md p-1 text-muted-foreground opacity-70 transition-all duration-150 hover:bg-muted hover:opacity-100 focus:outline-none">
           <X className="size-4" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
@@ -77,11 +77,11 @@ function SheetContent({
 }
 
 function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
-  return <div data-slot="sheet-header" className={cn("flex flex-col gap-1 border-b-2 border-border pb-4", className)} {...props} />;
+  return <div data-slot="sheet-header" className={cn("flex flex-col gap-1 border-b border-border pb-4", className)} {...props} />;
 }
 
 function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
-  return <div data-slot="sheet-footer" className={cn("mt-auto flex flex-col gap-2 border-t-2 border-border pt-4", className)} {...props} />;
+  return <div data-slot="sheet-footer" className={cn("mt-auto flex flex-col gap-2 border-t border-border pt-4", className)} {...props} />;
 }
 
 function SheetTitle({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Title>) {

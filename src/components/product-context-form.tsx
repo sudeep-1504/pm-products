@@ -130,7 +130,7 @@ export function ProductContextForm({ initial }: { initial: ProductContextData & 
             <p className="text-sm text-muted-foreground">No OKRs yet.</p>
           )}
           {form.okrs.map((okr, i) => (
-            <div key={i} className="flex flex-col gap-2 border-2 border-border p-3">
+            <div key={i} className="flex flex-col gap-2 rounded-lg border border-border p-3 transition-colors duration-150 hover:border-border-strong">
               <div className="flex items-center gap-2">
                 <Input
                   value={okr.objective}

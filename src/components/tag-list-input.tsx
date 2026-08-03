@@ -24,7 +24,7 @@ export function TagListInput({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 border-2 border-border p-1.5">
+    <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border-strong p-1.5 transition-colors duration-150 focus-within:border-foreground/30">
       {values.map((v) => (
         <Badge key={v} variant="default" className="gap-1 py-1">
           {v}
@@ -32,6 +32,7 @@ export function TagListInput({
             type="button"
             onClick={() => onChange(values.filter((x) => x !== v))}
             aria-label={`Remove ${v}`}
+            className="rounded-sm transition-colors hover:text-gap"
           >
             <X className="size-3" />
           </button>

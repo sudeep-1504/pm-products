@@ -10,7 +10,7 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
 }
 
 function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
-  return <thead data-slot="table-header" className={cn("border-b-2 border-border", className)} {...props} />;
+  return <thead data-slot="table-header" className={cn("border-b border-border", className)} {...props} />;
 }
 
 function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
@@ -21,7 +21,7 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
   return (
     <tfoot
       data-slot="table-footer"
-      className={cn("border-t-2 border-border bg-muted font-medium", className)}
+      className={cn("border-t border-border bg-muted font-medium", className)}
       {...props}
     />
   );
@@ -31,7 +31,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   return (
     <tr
       data-slot="table-row"
-      className={cn("border-b border-border transition-colors hover:bg-muted", className)}
+      className={cn("border-b border-border transition-colors duration-150 hover:bg-muted", className)}
       {...props}
     />
   );

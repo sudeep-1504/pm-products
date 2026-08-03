@@ -38,7 +38,7 @@ export function WeightedScoringEditor({ initial }: { initial: WeightedScoringPar
   return (
     <div className="flex flex-col gap-3">
       {criteria.map((c, i) => (
-        <div key={i} className="flex items-center gap-3 border-2 border-border p-3">
+        <div key={i} className="flex items-center gap-3 rounded-lg border border-border p-3 transition-colors duration-150 hover:border-border-strong">
           <div className="flex flex-1 flex-col gap-1.5">
             <Label>Signal</Label>
             <Select value={c.signal} onValueChange={(v) => updateCriterion(i, { signal: v as SignalKey })}>

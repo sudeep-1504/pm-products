@@ -4,15 +4,18 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-none text-sm font-medium tracking-tight transition-colors disabled:pointer-events-none disabled:opacity-40 [&_svg]:size-4 [&_svg]:shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium tracking-tight transition-all duration-150 ease-out disabled:pointer-events-none disabled:opacity-40 [&_svg]:size-4 [&_svg]:shrink-0 active:scale-[0.98]",
   {
     variants: {
       variant: {
-        default: "bg-foreground text-background border-2 border-foreground hover:opacity-80",
-        outline: "bg-transparent text-foreground border-2 border-foreground hover:bg-foreground hover:text-background",
-        ghost: "bg-transparent text-foreground border-2 border-transparent hover:border-foreground",
-        destructive: "bg-gap text-gap-foreground border-2 border-gap hover:opacity-80",
-        link: "bg-transparent text-foreground underline-offset-4 hover:underline border-0",
+        default:
+          "bg-foreground text-background shadow-sm shadow-foreground/10 hover:shadow-md hover:shadow-foreground/15 hover:-translate-y-px",
+        outline:
+          "bg-transparent text-foreground border border-border-strong hover:bg-muted hover:border-foreground/30",
+        ghost: "bg-transparent text-foreground hover:bg-muted",
+        destructive:
+          "bg-gap text-white shadow-sm shadow-gap/20 hover:shadow-md hover:shadow-gap/25 hover:-translate-y-px",
+        link: "bg-transparent text-foreground underline-offset-4 hover:underline",
       },
       size: {
         default: "h-9 px-4 py-2",
